@@ -3,129 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard HR - Autosol</title>
+    <title>Dashboard de Dotación Autosol</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: #003366; margin: 0; }
-        .header p { color: #666; }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
-        .kpi-card { background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); padding: 20px; }
-        .kpi-card h2 { margin-top: 0; font-size: 1.1em; color: #444; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; text-align: center; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; color: #333; }
+        .header { background-color: white; padding: 20px 30px; border-bottom: 2px solid #e0e6ed; display: flex; justify-content: space-between; align-items: center; }
+        .header-title h1 { color: #002D62; margin: 0; font-size: 32px; font-weight: 700; }
+        .header-meta { text-align: right; color: #6c757d; font-size: 14px; }
+
+        .dashboard-controls { background-color: #fff; padding: 15px 30px; margin-bottom: 20px; border-bottom: 1px solid #e0e6ed; }
+        .controls-row { display: flex; gap: 20px; }
+        .control-item p { margin: 0; font-weight: bold; color: #495057; }
+        .control-item span { color: #007bff; border-bottom: 1px dotted #007bff; }
+
+        .dashboard-container { padding: 0 30px 30px 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; grid-template-areas: "kpi hist rate" "table table rate" "ant cat cat"; }
+        
+        .card { background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 20px; transition: transform 0.2s; border: 1px solid #e0e6ed; }
+        .card h2 { margin-top: 0; font-size: 1.1em; color: #495057; border-bottom: 1px solid #f0f2f5; padding-bottom: 10px; text-align: center; }
         .chart-container { position: relative; height: 300px; width: 100%; }
-        /* Estilos para métricas de resumen */
-        .summary-box { display: flex; justify-content: space-around; margin-bottom: 20px; }
-        .summary-metric { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.05); width: 30%; }
-        .summary-metric h3 { margin: 0; font-size: 2.5em; color: #0056b3; }
-        .summary-metric p { margin: 5px 0 0 0; color: #666; font-size: 0.9em; font-weight: bold; }
+        
+        /* Estilos específicos para la tarjeta de KPI */
+        .card-kpi { grid-area: kpi; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .card-kpi h3 { margin: 0; font-size: 72px; color: #002D62; font-weight: 800; }
+        .card-kpi p { margin: 0; color: #6c757d; font-size: 1.1em; font-weight: bold; }
+
+        /* Estilos para las tarjetas del ejemplo */
+        .card-historical { grid-area: hist; grid-column: span 2; }
+        .card-growth { grid-area: rate; }
+        .card-antiguedad { grid-area: ant; grid-column: span 2; }
+        .card-area-table { grid-area: table; grid-column: span 3;}
+        .card-category { grid-area: cat; }
+
+        /* Estilo para la Tabla de Áreas */
+        .area-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95em; }
+        .area-table th, .area-table td { text-align: left; padding: 12px; border-bottom: 1px solid #e0e6ed; }
+        .area-table th { background-color: #f8f9fa; color: #495057; text-transform: uppercase; font-size: 0.85em; font-weight: 700; }
+        .area-table tr:hover { background-color: #f1f3f5; }
+        .area-table td.count { text-align: right; color: #007bff; font-weight: bold; width: 150px; }
+        .area-table-total td { background-color: #f8f9fa; font-weight: bold; border-top: 2px solid #dee2e6; }
+        .total-number-cell { color: #002D62; font-size: 1.2em; text-align: right;}
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>Indicadores de Gestión - Autosol</h1>
-        <p>Actualización en tiempo real desde Google Sheets</p>
+        <div class="header-title">
+            <h1>Dotación</h1>
+        </div>
+        <div class="header-meta">
+            Última Actualización: <span id="lastUpdatedDate">---</span><br>
+            Resp. Actualización: Recursos Humanos
+        </div>
     </div>
 
-    <div class="summary-box">
-        <div class="summary-metric">
-            <h3 id="totalEmpleados">0</h3>
-            <p>TOTAL NÓMINA</p>
-        </div>
-        <div class="summary-metric">
-            <h3 id="totalActivos">0</h3>
-            <p>EMPLEADOS ACTIVOS</p>
+    <div class="dashboard-controls">
+        <div class="controls-row">
+            <div class="control-item"><p>Localidad</p><span>Salta</span></div>
+            <div class="control-item"><p>Área</p><span>Todas</span></div>
+            <div class="control-item"><p>Año</p><span>2026</span></div>
+            <div class="control-item"><p>Mes</p><span>Todas</span></div>
         </div>
     </div>
     
-    <div class="dashboard-grid">
-        <div class="kpi-card">
-            <h2>Distribución por Área</h2>
+    <div class="dashboard-container">
+        
+        <div class="card card-kpi">
+            <h3 id="totalDotacion">---</h3>
+            <p>Dotación</p>
+        </div>
+
+        <div class="card card-historical">
+            <h2>Dotación Histórica</h2>
             <div class="chart-container">
-                <canvas id="chartArea"></canvas>
+                <canvas id="chartHistorical"></canvas>
             </div>
         </div>
 
-        <div class="kpi-card">
-            <h2>Estado de la Nómina</h2>
+        <div class="card card-area-table">
+            <h2>Detalle de Dotación por Área</h2>
+            <table class="area-table" id="areaTable">
+                <thead>
+                    <tr><th>Área</th><th class="count">Salta</th></tr>
+                </thead>
+                <tbody id="areaTableBody">
+                    </tbody>
+                <tfoot>
+                    <tr class="area-table-total"><td>Total General</td><td class="total-number-cell" id="totalTableDotacion">0</td></tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="card card-antiguedad">
+            <h2>Cantidad de Colaboradores por Antigüedad</h2>
             <div class="chart-container">
-                <canvas id="chartEstado"></canvas>
+                <canvas id="chartAntiguedad"></canvas>
+            </div>
+        </div>
+
+        <div class="card card-category">
+            <h2>Distribución por Categoría</h2>
+            <div class="chart-container">
+                <canvas id="chartCategory"></canvas>
             </div>
         </div>
     </div>
 
     <script>
-        // ESTE ES TU ENLACE CONVERTIDO PARA QUE GITHUB LO PUEDA LEER
-        const urlDatos = 'https://docs.google.com/spreadsheets/d/16eC2oPvs92S1LY2ND4HmufS52gZACC4oNjQhKzjCm2k/export?format=csv&gid=1551357491';
+        // *** IMPORTANTE: PEGA TU ENLACE CSV PUBLICADO AQUÍ ***
+        const urlDatosDotacion = 'TU_ENLACE_CSV_PUBLICADO_EN_EL_PASO_1_AQUÍ';
+        // ******************************************************
 
-        Papa.parse(urlDatos, {
+        // Configuración de Colores Corporativos Autosol
+        const primaryColor = '#0056b3';
+        const accentColors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6c757d', '#e83e8c'];
+
+        Papa.parse(urlDatosDotacion, {
             download: true,
             header: true,
             complete: function(results) {
                 const data = results.data;
+                // Filtrar filas vacías
+                const validData = data.filter(row => row['Nombre y Apellido'] && row['Área'] && row['Fecha de Ingreso']);
+
+                if (validData.length === 0) {
+                    alert("No se encontraron datos válidos. Verifica que las columnas 'Nombre y Apellido', 'Área' y 'Fecha de Ingreso' existan y tengan datos.");
+                    return;
+                }
+
+                document.getElementById('totalDotacion').innerText = validData.length;
+                document.getElementById('totalTableDotacion').innerText = validData.length;
                 
-                // --- Variables para contar ---
-                let total = 0;
-                let activos = 0;
-                const countArea = {};
-                const countEstado = {};
+                // Fecha de actualización (simulada como hoy, para el ejemplo)
+                const today = new Date();
+                document.getElementById('lastUpdatedDate').innerText = today.toLocaleDateString('es-AR');
 
-                // --- Procesar los datos ---
-                data.forEach(row => {
-                    // Validar que la fila no esté vacía
-                    if (row['Estado'] || row['Área']) {
-                        total++;
-                        
-                        // Contar Activos
-                        if (row['Estado'] === 'Activo' || row['Estado'] === 'ACTIVO') {
-                            activos++;
-                        }
-
-                        // Agrupar por Área
-                        const area = row['Área'] || 'Sin definir';
-                        countArea[area] = (countArea[area] || 0) + 1;
-
-                        // Agrupar por Estado
-                        const estado = row['Estado'] || 'Sin definir';
-                        countEstado[estado] = (countEstado[estado] || 0) + 1;
-                    }
-                });
-
-                // --- Actualizar los números grandes de arriba ---
-                document.getElementById('totalEmpleados').innerText = total;
-                document.getElementById('totalActivos').innerText = activos;
-
-                // --- Crear Gráfico de Barras (Áreas) ---
-                new Chart(document.getElementById('chartArea').getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(countArea),
-                        datasets: [{
-                            label: 'Cantidad',
-                            data: Object.values(countArea),
-                            backgroundColor: '#0056b3',
-                            borderRadius: 5
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
-
-                // --- Crear Gráfico Circular (Estado) ---
-                new Chart(document.getElementById('chartEstado').getContext('2d'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: Object.keys(countEstado),
-                        datasets: [{
-                            data: Object.values(countEstado),
-                            backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#6c757d']
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+                processHistorical(validData);
+                processAreaTable(validData);
+                processAntiguedad(validData, today);
+                processCategory(validData);
             }
         });
+
+        // KPI 1: Dotación Histórica (Gráfico de Línea)
+        function processHistorical(data) {
+            const dateCounts = {};
+            data.forEach(row => {
+                // Asumimos formato DD/MM/YYYY mostrado en el ejemplo
+                const parts = row['Fecha de Ingreso'].split('/');
+                if (parts.length === 3) {
+                    // Creamos clave YYYY-MM para agrupar por mes
+                    const monthKey = `${parts[2]}-${parts[1].padStart(2, '0')}`;
+                    dateCounts[monthKey] = (dateCounts[monthKey] || 0) + 1;
+                }
+            });
+
+            // Ordenar las fechas
+            const sortedMonths = Object.keys(dateCounts).sort();
+            
+            // Calcular el acumulado
+            let cumulative = 0;
+            const historicalData = sortedMonths.map(month => {
+                cumulative += dateCounts[month];
+                return { x: month, y: cumulative };
+            });
+
+            new Chart(document.getElementById('chartHistorical').getContext('2d'), {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Dotación Total',
+                        data: historicalData,
+                        borderColor: primaryColor,
+                        backgroundColor: primaryColor + '10', // Azul translúcido
+                        fill: true,
+                        tension: 0.2, // Líneas curvas suavemente
+                        pointRadius: 5
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: false, grid: { color: '#f0f2f5' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        // KPI 2: Tabla por Área (Imitando la estética del ejemplo)
+        function processAreaTable(data) {
+            const countArea = {};
+            data.forEach(row => {
+                const area = row['Área'].trim() || 'Sin área';
+                countArea[area] = (countArea[area] || 0) + 1;
+            });
+
+            const tbody = document.getElementById('areaTableBody');
+            tbody.innerHTML = ''; // Limpiar
+            
+            // Ordenar áreas alfabéticamente
+            const sortedAreas = Object.keys(countArea).sort();
+            
+            sortedAreas.forEach(area => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${area}</td><td class="count">${countArea[area]}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // KPI 3: Cantidad por Antigüedad (Gráfico de Barras Horizontales - Imita el ejemplo)
+        function processAntiguedad(data, refDate) {
+            const tenureBuckets = { "< 1 año": 0, "De 1 a 3 años": 0, "De 3 a 5 años": 0, "De 5 a 10 años": 0, "10 años o más": 0 };
+
+            data.forEach(row => {
+                const parts = row['Fecha de Ingreso'].split('/');
+                if (parts.length === 3) {
+                    const ingreso = new Date(parts[2], parts[1] - 1, parts[0]);
+                    const diffYears = (refDate - ingreso) / (1000 * 60 * 60 * 24 * 365.25);
+                    
+                    if (diffYears < 1) tenureBuckets["< 1 año"]++;
+                    else if (diffYears < 3) tenureBuckets["De 1 a 3 años"]++;
+                    else if (diffYears < 5) tenureBuckets["De 3 a 5 años"]++;
+                    else if (diffYears < 10) tenureBuckets["De 5 a 10 años"]++;
+                    else tenureBuckets["10 años o más"]++;
+                }
+            });
+
+            new Chart(document.getElementById('chartAntiguedad').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(tenureBuckets),
+                    datasets: [{
+                        label: 'Colaboradores',
+                        data: Object.values(tenureBuckets),
+                        backgroundColor: primaryColor,
+                        borderRadius: 5
+                    }]
+                },
+                options: { 
+                    indexAxis: 'y', // Hace las barras horizontales
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { x: { beginAtZero: true, grid: { color: '#f0f2f5' } }, y: { grid: { display: false } } },
+                    plugins: { legend: { display: false } } // Ocultar leyenda
+                }
+            });
+        }
+
+        // KPI 4: Distribución por Categoría (Gráfico de Tarta)
+        function processCategory(data) {
+            const countCategory = {};
+            data.forEach(row => {
+                const category = row['Categoría'] ? row['Categoría'].trim() : 'Sin definir';
+                countCategory[category] = (countCategory[category] || 0) + 1;
+            });
+
+            new Chart(document.getElementById('chartCategory').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(countCategory),
+                    datasets: [{
+                        data: Object.values(countCategory),
+                        backgroundColor: accentColors // Usar paleta de colores Autosol
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
     </script>
 </body>
 </html>
