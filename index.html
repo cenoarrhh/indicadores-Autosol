@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard HR - Autosol</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #003366; margin: 0; }
+        .header p { color: #666; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .kpi-card { background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); padding: 20px; }
+        .kpi-card h2 { margin-top: 0; font-size: 1.1em; color: #444; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; text-align: center; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        /* Estilos para métricas de resumen */
+        .summary-box { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .summary-metric { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.05); width: 30%; }
+        .summary-metric h3 { margin: 0; font-size: 2.5em; color: #0056b3; }
+        .summary-metric p { margin: 5px 0 0 0; color: #666; font-size: 0.9em; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Indicadores de Gestión - Autosol</h1>
+        <p>Actualización en tiempo real desde Google Sheets</p>
+    </div>
+
+    <div class="summary-box">
+        <div class="summary-metric">
+            <h3 id="totalEmpleados">0</h3>
+            <p>TOTAL NÓMINA</p>
+        </div>
+        <div class="summary-metric">
+            <h3 id="totalActivos">0</h3>
+            <p>EMPLEADOS ACTIVOS</p>
+        </div>
+    </div>
+    
+    <div class="dashboard-grid">
+        <div class="kpi-card">
+            <h2>Distribución por Área</h2>
+            <div class="chart-container">
+                <canvas id="chartArea"></canvas>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <h2>Estado de la Nómina</h2>
+            <div class="chart-container">
+                <canvas id="chartEstado"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ESTE ES TU ENLACE CONVERTIDO PARA QUE GITHUB LO PUEDA LEER
+        const urlDatos = 'https://docs.google.com/spreadsheets/d/16eC2oPvs92S1LY2ND4HmufS52gZACC4oNjQhKzjCm2k/export?format=csv&gid=1551357491';
+
+        Papa.parse(urlDatos, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                const data = results.data;
+                
+                // --- Variables para contar ---
+                let total = 0;
+                let activos = 0;
+                const countArea = {};
+                const countEstado = {};
+
+                // --- Procesar los datos ---
+                data.forEach(row => {
+                    // Validar que la fila no esté vacía
+                    if (row['Estado'] || row['Área']) {
+                        total++;
+                        
+                        // Contar Activos
+                        if (row['Estado'] === 'Activo' || row['Estado'] === 'ACTIVO') {
+                            activos++;
+                        }
+
+                        // Agrupar por Área
+                        const area = row['Área'] || 'Sin definir';
+                        countArea[area] = (countArea[area] || 0) + 1;
+
+                        // Agrupar por Estado
+                        const estado = row['Estado'] || 'Sin definir';
+                        countEstado[estado] = (countEstado[estado] || 0) + 1;
+                    }
+                });
+
+                // --- Actualizar los números grandes de arriba ---
+                document.getElementById('totalEmpleados').innerText = total;
+                document.getElementById('totalActivos').innerText = activos;
+
+                // --- Crear Gráfico de Barras (Áreas) ---
+                new Chart(document.getElementById('chartArea').getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(countArea),
+                        datasets: [{
+                            label: 'Cantidad',
+                            data: Object.values(countArea),
+                            backgroundColor: '#0056b3',
+                            borderRadius: 5
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+
+                // --- Crear Gráfico Circular (Estado) ---
+                new Chart(document.getElementById('chartEstado').getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(countEstado),
+                        datasets: [{
+                            data: Object.values(countEstado),
+                            backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#6c757d']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
