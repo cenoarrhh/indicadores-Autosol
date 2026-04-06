@@ -11,69 +11,104 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos CSS Personalizados para lucir premium
-st.markdown("""
+# Paleta CY24SU10 extraida de Power BI
+PBI_COLORS = ['#118DFF', '#12239E', '#E66C37', '#6B007B', '#E044A7', '#744EC2', '#D9B300', '#D64550', '#1AAB40']
+PBI_BG_CANVAS = '#F3F2F1'
+PBI_BG_CARD = '#FFFFFF'
+PBI_TEXT_PRI = '#252423'
+PBI_TEXT_SEC = '#605E5C'
+
+# Estilos CSS Personalizados para simular Power BI
+st.markdown(f"""
 <style>
-    /* Fondo principal y textos */
-    .stApp {
-        background-color: #f4f6f9;
+    /* Fondo principal y textos (simulando lienzo gris claro de Power BI) */
+    .stApp {{
+        background-color: {PBI_BG_CANVAS};
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    }}
     
-    /* Métrica cards */
-    [data-testid="stMetricValue"] {
-        font-size: 2.2rem;
-        font-weight: 800;
-        color: #002D62;
-    }
-    [data-testid="stMetricLabel"] {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #6c757d;
-    }
+    /* Panel lateral / Sidebar */
+    [data-testid="stSidebar"] {{
+        background-color: {PBI_BG_CARD} !important;
+        border-right: 1px solid #E1DFDD;
+    }}
+    
+    /* Formato estilo "Tarjetas" (Cards) de Power BI para métricas */
+    [data-testid="stMetric"] {{
+        background-color: {PBI_BG_CARD};
+        padding: 15px 20px;
+        border-radius: 2px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0,0,0,0.24);
+        margin-bottom: 10px;
+    }}
+    
+    /* Valores de los KPIs */
+    [data-testid="stMetricValue"] {{
+        font-size: 2.5rem !important;
+        font-weight: 400 !important;
+        color: {PBI_TEXT_PRI} !important;
+        font-family: 'Segoe UI', Tahoma, sans-serif !important;
+    }}
+    /* Títulos de los KPIs */
+    [data-testid="stMetricLabel"] {{
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: {PBI_TEXT_SEC} !important;
+    }}
     
     /* Headers de la página */
-    h1 {
-        color: #002D62;
-        font-weight: 800;
-        padding-bottom: 0px;
-    }
-    h2, h3 {
-        color: #343a40;
+    h1 {{
+        color: {PBI_TEXT_PRI};
         font-weight: 600;
-    }
+        padding-bottom: 0px;
+        padding-top: 1rem;
+    }}
+    h2, h3 {{
+        color: {PBI_TEXT_PRI};
+        font-weight: 600;
+        font-size: 1.1rem !important;
+    }}
+    
+    /* Asegurar que los graficos tambien parezcan "tarjetas" flotantes */
+    .stPlotlyChart {{
+        background-color: {PBI_BG_CARD};
+        padding: 10px;
+        border-radius: 2px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }}
+
+    /* Dataframe table styling to match PBI somewhat */
+    [data-testid="stDataFrame"] {{
+        background-color: {PBI_BG_CARD};
+        padding: 15px;
+        border-radius: 2px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }}
     
     /* Remueve margenes extra */
-    .block-container {
-        padding-top: 2rem;
+    .block-container {{
+        padding-top: 1rem;
         padding-bottom: 2rem;
-    }
+    }}
 </style>
 """, unsafe_allow_html=True)
 
 # URL de datos
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR7Ila8tzO3SEBZ5-faEFW-9VZY8eiPCUV3vPhryrlyqsmovw76hKqVRc-y18rTmz0NugYIUv6JTxRH/pub?output=csv"
 
-@st.cache_data(ttl=3600)  # Refrescar cada 1 hora
+@st.cache_data(ttl=3600)
 def load_data():
     try:
-        # Cargar CSV
         df = pd.read_csv(CSV_URL)
-        
-        # Limpieza básica
         df = df.dropna(subset=['Nombre y Apellido', 'Área', 'Fecha de Ingreso'])
         
-        # Parseo de fechas (DD/MM/YYYY o similar)
-        # Se asume formato compatible de Argentina
         df['Fecha de Ingreso'] = pd.to_datetime(df['Fecha de Ingreso'], errors='coerce', dayfirst=True)
         df['Fecha de Nacimiento'] = pd.to_datetime(df['Fecha de Nacimiento'], errors='coerce', dayfirst=True)
         
-        # Cálculos de Edad y Antigüedad
         now = pd.Timestamp.now()
         df['Edad'] = (now - df['Fecha de Nacimiento']).dt.days / 365.25
         df['Antigüedad (Años)'] = (now - df['Fecha de Ingreso']).dt.days / 365.25
         
-        # Rellenar nulos categóricos comunes
         df['Estado'] = df['Estado'].fillna('Desconocido')
         df['Localidad'] = df['Localidad'].fillna('Sin especificar')
         df['Sexo'] = df['Sexo'].fillna('Sin Especificar')
@@ -84,7 +119,6 @@ def load_data():
         st.error(f"Error al cargar los datos: {e}")
         return pd.DataFrame()
 
-# Cargar los datos
 df_raw = load_data()
 
 if df_raw.empty:
@@ -92,33 +126,26 @@ if df_raw.empty:
     st.stop()
 
 # ----------------------------------------------------
-# COMPONENTES DEL SIDEBAR (Filtros)
+# COMPONENTES DEL SIDEBAR (Filtros - Slicers)
 # ----------------------------------------------------
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=100) # Logo placeholder
-st.sidebar.title("Filtros de Dashboard")
+st.sidebar.markdown(f"<h2 style='color:{PBI_TEXT_PRI};'>Filtros</h2>", unsafe_allow_html=True)
 
-# Selector de Estado
 estados_disponibles = ["Todos"] + list(df_raw['Estado'].dropna().unique())
 estado_seleccionado = st.sidebar.selectbox("Estado", estados_disponibles, index=estados_disponibles.index("Activo") if "Activo" in estados_disponibles else 0)
 
-# Aplicar filtro estado temporalmente para obtener el resto de filtros relevantes
 df_filtered = df_raw.copy()
 if estado_seleccionado != "Todos":
     df_filtered = df_filtered[df_filtered['Estado'] == estado_seleccionado]
 
-# Selector de Localidad
 loc_disponibles = ["Todas"] + list(df_filtered['Localidad'].dropna().unique())
 loc_seleccionada = st.sidebar.selectbox("Localidad", loc_disponibles)
 
-# Selector de Área
 area_disponibles = ["Todas"] + list(df_filtered['Área'].dropna().unique())
 area_seleccionada = st.sidebar.selectbox("Área", area_disponibles)
 
-# Selector de Sexo
 sexo_disponibles = ["Todos"] + list(df_filtered['Sexo'].dropna().unique())
 sexo_seleccionado = st.sidebar.selectbox("Sexo", sexo_disponibles)
 
-# Aplicar todos los filtros
 if loc_seleccionada != "Todas":
     df_filtered = df_filtered[df_filtered['Localidad'] == loc_seleccionada]
 if area_seleccionada != "Todas":
@@ -131,43 +158,44 @@ if sexo_seleccionado != "Todos":
 # ----------------------------------------------------
 col_title, col_date = st.columns([3, 1])
 with col_title:
-    st.title("Dashboard Ejecutivo de Dotación")
+    st.title("Dotación, Rotación, Ausentismo y Formación")
 with col_date:
-    st.markdown(f"<div style='text-align: right; color: gray; padding-top: 25px;'>Última actualización<br><b>{datetime.now().strftime('%d/%m/%Y')}</b></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: right; color: {PBI_TEXT_SEC}; padding-top: 35px; font-size:12px;'>Última actualización<br><b>{datetime.now().strftime('%d/%m/%Y')}</b></div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# 1. Row de KPIs Superiores
 if not df_filtered.empty:
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     
-    # KPI 1: Cantidad de Empleados (Dotación)
     total_dotacion = len(df_filtered)
-    kpi1.metric("Dotación Total", f"{total_dotacion}")
+    kpi1.metric("Dotación Total", f"{total_dotacion:,}")
     
-    # KPI 2: Edad Promedio
     edad_promedio = df_filtered['Edad'].mean()
-    kpi2.metric("Edad Promedio", f"{edad_promedio:.1f} años" if pd.notnull(edad_promedio) else "N/A")
+    kpi2.metric("Edad Promedio", f"{edad_promedio:.1f} años" if pd.notnull(edad_promedio) else "0.0")
     
-    # KPI 3: Antigüedad Promedio
     ant_promedio = df_filtered['Antigüedad (Años)'].mean()
-    kpi3.metric("Antigüedad Prom.", f"{ant_promedio:.1f} años" if pd.notnull(ant_promedio) else "N/A")
+    kpi3.metric("Antigüedad Promedio", f"{ant_promedio:.1f} años" if pd.notnull(ant_promedio) else "0.0")
     
-    # KPI 4: Ratio Género (Mujeres)
     if 'Femenino' in df_filtered['Sexo'].values:
         femenino_pct = (len(df_filtered[df_filtered['Sexo'] == 'Femenino']) / total_dotacion) * 100
         kpi4.metric("% Mujeres", f"{femenino_pct:.1f}%")
     else:
         kpi4.metric("% Mujeres", "0.0%")
         
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.write("") # Spacing
     
-    # 2. Row de Gráficos (Histórico vs Demografía)
+    # Base layout para todos los charts de plotly (PBI Style)
+    plotly_layout_defaults = dict(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family="Segoe UI, Tahoma, sans-serif", color=PBI_TEXT_SEC, size=11),
+        margin=dict(l=10, r=10, t=30, b=10)
+    )
+
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 Histórico de Ingresos Acumulados")
-        # Procesar datos históricos: Agrupar por Mes/Año de Ingreso
+        # st.subheader no es necesario si lo ponemos en el chart de plotly como title
         df_hist = df_filtered.dropna(subset=['Fecha de Ingreso']).copy()
         if not df_hist.empty:
             df_hist['AÑO_MES'] = df_hist['Fecha de Ingreso'].dt.to_period('M')
@@ -176,16 +204,16 @@ if not df_filtered.empty:
             hist_counts = hist_counts.sort_values('AÑO_MES')
             hist_counts['Dotación Acumulada'] = hist_counts['Ingresos'].cumsum()
             
-            fig_hist = px.area(hist_counts, x='AÑO_MES', y='Dotación Acumulada', 
-                               color_discrete_sequence=['#0056b3'])
-            fig_hist.update_layout(xaxis_title="", yaxis_title="Empleados", margin=dict(l=0, r=0, t=10, b=0))
+            fig_hist = px.area(hist_counts, x='AÑO_MES', y='Dotación Acumulada', title="Histórico de Ingresos Acumulados")
+            fig_hist.update_traces(line_color=PBI_COLORS[0])
+            fig_hist.update_layout(**plotly_layout_defaults, xaxis_title="", yaxis_title="")
+            fig_hist.update_xaxes(showgrid=False)
+            fig_hist.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#E1DFDD')
             st.plotly_chart(fig_hist, use_container_width=True)
         else:
-            st.info("No hay datos de fecha de ingreso suficientes.")
+            st.info("No hay datos históricos")
             
     with col2:
-        st.subheader("👥 Distribución por Generación y Sexo")
-        # Crear bins de edad
         df_age = df_filtered.dropna(subset=['Edad']).copy()
         if not df_age.empty:
             bins = [18, 25, 35, 45, 55, 100]
@@ -195,47 +223,49 @@ if not df_filtered.empty:
             age_dist = df_age.groupby(['Rango Etario', 'Sexo'], observed=False).size().reset_index(name='Cantidad')
             
             fig_age = px.bar(age_dist, x='Rango Etario', y='Cantidad', color='Sexo', barmode='group',
-                             color_discrete_map={'Femenino': '#e83e8c', 'Masculino': '#007bff'})
-            fig_age.update_layout(xaxis_title="", yaxis_title="", margin=dict(l=0, r=0, t=10, b=0))
+                             color_discrete_map={'Femenino': PBI_COLORS[4], 'Masculino': PBI_COLORS[0], 'Sin Especificar': PBI_COLORS[2]},
+                             title="Distribución por Rango Etario y Sexo")
+            fig_age.update_layout(**plotly_layout_defaults, xaxis_title="", yaxis_title="")
+            fig_age.update_xaxes(showgrid=False)
+            fig_age.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#E1DFDD')
             st.plotly_chart(fig_age, use_container_width=True)
         else:
-            st.info("No hay datos de edades suficientes.")
+            st.info("No hay datos de edad")
 
     # 3. Row de Áreas & Sectores y Localidades
-    col3, col4, col5 = st.columns([1.5, 1, 1])
+    col3, col4, col5 = st.columns([2, 1.5, 1.5])
     
     with col3:
-        st.subheader("🏢 Composición por Área y Sector")
         if 'Sector' in df_filtered.columns and not df_filtered.empty:
             sunburst_data = df_filtered.groupby(['Área', 'Sector']).size().reset_index(name='Cantidad')
             fig_sunburst = px.sunburst(sunburst_data, path=['Área', 'Sector'], values='Cantidad', 
-                                       color_discrete_sequence=px.colors.qualitative.Prism)
-            fig_sunburst.update_layout(margin=dict(t=10, l=0, r=0, b=0))
+                                       title="Composición por Área (Árbol)", color_discrete_sequence=PBI_COLORS)
+            fig_sunburst.update_layout(**plotly_layout_defaults)
             st.plotly_chart(fig_sunburst, use_container_width=True)
             
     with col4:
-        st.subheader("📍 Geografía")
         loc_data = df_filtered['Localidad'].value_counts().reset_index()
         loc_data.columns = ['Localidad', 'Cantidad']
-        fig_loc = px.pie(loc_data, names='Localidad', values='Cantidad', hole=0.5,
-                         color_discrete_sequence=px.colors.sequential.Teal)
+        fig_loc = px.pie(loc_data, names='Localidad', values='Cantidad', hole=0.6,
+                         title="Geografía Local", color_discrete_sequence=PBI_COLORS)
         fig_loc.update_traces(textposition='inside', textinfo='percent+label')
-        fig_loc.update_layout(margin=dict(t=10, l=0, r=0, b=0), showlegend=False)
+        fig_loc.update_layout(**plotly_layout_defaults, showlegend=False)
         st.plotly_chart(fig_loc, use_container_width=True)
         
     with col5:
-        st.subheader("⚖️ Legal y Convenios")
-        if 'Convenio' in df_filtered.columns:
-            conv_data = df_filtered['Convenio'].fillna('S/D').value_counts().reset_index()
-            conv_data.columns = ['Convenio', 'Cantidad']
-            fig_conv = px.pie(conv_data, names='Convenio', values='Cantidad', hole=0.5,
-                             color_discrete_sequence=px.colors.sequential.Sunset)
-            fig_conv.update_traces(textposition='inside', textinfo='percent+label')
-            fig_conv.update_layout(margin=dict(t=10, l=0, r=0, b=0), showlegend=False)
-            st.plotly_chart(fig_conv, use_container_width=True)
+        if 'Convenio' in df_filtered.columns or 'Estado' in df_filtered.columns:
+            # Reutilizamos Estado si Convenio no es el foco del PBI actual
+            est_data = df_filtered['Estado'].value_counts().reset_index()
+            est_data.columns = ['Estado', 'Cantidad']
+            pbi_estado_colors = ['#1AAB40', '#D64550', '#D9B300'] # Verde Activo, Rojo Inactivo
+            fig_estado = px.pie(est_data, names='Estado', values='Cantidad', hole=0.6,
+                             title="Distribución de Estado", color_discrete_sequence=pbi_estado_colors)
+            fig_estado.update_traces(textposition='inside', textinfo='percent+label')
+            fig_estado.update_layout(**plotly_layout_defaults, showlegend=False)
+            st.plotly_chart(fig_estado, use_container_width=True)
             
-    # 4. Tabla de Datos Crudos para Exportación Directa
-    st.subheader("📋 Detalle Analítico")
+    # 4. Tabla de Datos Crudos
+    st.markdown(f"<h3 style='color:{PBI_TEXT_PRI};'>Detalles Analíticos de la Nómina</h3>", unsafe_allow_html=True)
     st.dataframe(df_filtered[['Nombre y Apellido', 'Localidad', 'Sexo', 'Fecha de Ingreso', 'Antigüedad (Años)', 'Convenio', 'Área', 'Puesto', 'Estado']].style.format({'Antigüedad (Años)': '{:.1f}'}), use_container_width=True)
 
 else:
@@ -243,4 +273,4 @@ else:
     
 # Footer
 st.markdown("---")
-st.markdown("<p style='text-align: center; color: gray; font-size: 0.9em;'>Dashboard Autogenerado • Autosol • 2026</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: {PBI_TEXT_SEC}; font-size: 0.8em;'>Dashboard Integrado (Estilo PBI CY24SU10) • Autosol</p>", unsafe_allow_html=True)
