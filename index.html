@@ -3,271 +3,619 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Dotación Autosol</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>PowerBI - Dashboard de Dotación Autosol</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; color: #333; }
-        .header { background-color: white; padding: 20px 30px; border-bottom: 2px solid #e0e6ed; display: flex; justify-content: space-between; align-items: center; }
-        .header-title h1 { color: #002D62; margin: 0; font-size: 32px; font-weight: 700; }
-        .header-meta { text-align: right; color: #6c757d; font-size: 14px; }
+        /* CSS PREMIUM RESET & VARIABLES */
+        :root {
+            --bg-body: #0b0f19;
+            --bg-sidebar: rgba(15, 23, 42, 0.85);
+            --bg-card: rgba(30, 41, 59, 0.6);
+            --bg-card-hover: rgba(30, 41, 59, 0.85);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #818cf8;
+            --accent-tertiary: #f472b6;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --font-main: 'Inter', sans-serif;
+            --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --blur-glass: blur(12px);
+        }
 
-        .dashboard-controls { background-color: #fff; padding: 15px 30px; margin-bottom: 20px; border-bottom: 1px solid #e0e6ed; }
-        .controls-row { display: flex; gap: 20px; }
-        .control-item p { margin: 0; font-weight: bold; color: #495057; }
-        .control-item span { color: #007bff; border-bottom: 1px dotted #007bff; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-main);
+            background: var(--bg-body) radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.08), transparent 30%), 
+                                   radial-gradient(circle at 85% 30%, rgba(129, 140, 248, 0.08), transparent 30%);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+        }
 
-        .dashboard-container { padding: 0 30px 30px 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; grid-template-areas: "kpi hist rate" "table table rate" "ant cat cat"; }
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* SIDEBAR (Slicers Style) */
+        .sidebar {
+            width: 250px;
+            background: var(--bg-sidebar);
+            backdrop-filter: var(--blur-glass);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .filter-group { margin-bottom: 20px; }
+        .filter-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
         
-        .card { background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 20px; transition: transform 0.2s; border: 1px solid #e0e6ed; }
-        .card h2 { margin-top: 0; font-size: 1.1em; color: #495057; border-bottom: 1px solid #f0f2f5; padding-bottom: 10px; text-align: center; }
-        .chart-container { position: relative; height: 300px; width: 100%; }
+        .filter-group select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-family: var(--font-main);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            appearance: none;
+            cursor: pointer;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%2394a3b8" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position-x: 95%;
+            background-position-y: 50%;
+        }
+        .filter-group select:hover, .filter-group select:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .filter-group select option { background: var(--bg-body); color: var(--text-primary); }
+
+        .logo-placeholder {
+            margin-bottom: 30px;
+            color: var(--text-primary);
+            font-weight: 800;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-placeholder span {
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .header {
+            padding: 20px 40px;
+            background: transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-primary);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .header .meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: right;
+            line-height: 1.4;
+        }
+
+        /* DASHBOARD GRID */
+        .dashboard {
+            padding: 10px 40px 40px 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: minmax(130px, auto);
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: calc(100% - 80px);
+        }
+
+        /* CARDS (Glassmorphism) */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: var(--blur-glass);
+            -webkit-backdrop-filter: var(--blur-glass);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow-glass);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            background: var(--bg-card-hover);
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        /* KPI Specific */
+        .kpi-title { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 10px; }
+        .kpi-value { font-size: 32px; font-weight: 800; color: var(--text-primary); text-shadow: 0 0 20px rgba(56, 189, 248, 0.4); margin: 0; line-height: 1; }
         
-        /* Estilos específicos para la tarjeta de KPI */
-        .card-kpi { grid-area: kpi; text-align: center; display: flex; flex-direction: column; justify-content: center; }
-        .card-kpi h3 { margin: 0; font-size: 72px; color: #002D62; font-weight: 800; }
-        .card-kpi p { margin: 0; color: #6c757d; font-size: 1.1em; font-weight: bold; }
+        /* Grid Spans */
+        .col-span-1 { grid-column: span 1; }
+        .col-span-2 { grid-column: span 2; }
+        .col-span-4 { grid-column: span 4; }
+        .row-span-2 { grid-row: span 2; min-height: 380px; }
 
-        /* Estilos para las tarjetas del ejemplo */
-        .card-historical { grid-area: hist; grid-column: span 2; }
-        .card-growth { grid-area: rate; }
-        .card-antiguedad { grid-area: ant; grid-column: span 2; }
-        .card-area-table { grid-area: table; grid-column: span 3;}
-        .card-category { grid-area: cat; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .chart-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .chart-container { flex: 1; min-height: 0; position: relative; width: 100%; height: 100%;}
+        
+        /* Table Styles */
+        .data-table-container { overflow: auto; max-height: 400px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+        th { background: rgba(15, 23, 42, 0.9); position: sticky; top: 0; z-index: 1; padding: 12px; font-size: 12px; color: var(--accent-primary); border-bottom: 1px solid var(--border-color); text-transform: uppercase;}
+        td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+        tr:hover td { background: rgba(255,255,255,0.03); }
 
-        /* Estilo para la Tabla de Áreas */
-        .area-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95em; }
-        .area-table th, .area-table td { text-align: left; padding: 12px; border-bottom: 1px solid #e0e6ed; }
-        .area-table th { background-color: #f8f9fa; color: #495057; text-transform: uppercase; font-size: 0.85em; font-weight: 700; }
-        .area-table tr:hover { background-color: #f1f3f5; }
-        .area-table td.count { text-align: right; color: #007bff; font-weight: bold; width: 150px; }
-        .area-table-total td { background-color: #f8f9fa; font-weight: bold; border-top: 2px solid #dee2e6; }
-        .total-number-cell { color: #002D62; font-size: 1.2em; text-align: right;}
+        /* Loader */
+        #loader {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-body); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner { width: 50px; height: 50px; border: 4px solid var(--border-color); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div class="header-title">
-            <h1>Dotación</h1>
-        </div>
-        <div class="header-meta">
-            Última Actualización: <span id="lastUpdatedDate">---</span><br>
-            Resp. Actualización: Recursos Humanos
-        </div>
+    <!-- Loader -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <p>Cargando Datos y Renderizando Modelos...</p>
     </div>
 
-    <div class="dashboard-controls">
-        <div class="controls-row">
-            <div class="control-item"><p>Localidad</p><span>Salta</span></div>
-            <div class="control-item"><p>Área</p><span>Todas</span></div>
-            <div class="control-item"><p>Año</p><span>2026</span></div>
-            <div class="control-item"><p>Mes</p><span>Todas</span></div>
+    <!-- Sidebar / Filtros -->
+    <aside class="sidebar">
+        <div class="logo-placeholder">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#blue-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#38bdf8" /><stop offset="100%" stop-color="#818cf8" /></linearGradient><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+            <span>Autosol</span>
         </div>
-    </div>
-    
-    <div class="dashboard-container">
         
-        <div class="card card-kpi">
-            <h3 id="totalDotacion">---</h3>
-            <p>Dotación</p>
-        </div>
+        <h2>Filtros (Slicers)</h2>
 
-        <div class="card card-historical">
-            <h2>Dotación Histórica</h2>
-            <div class="chart-container">
-                <canvas id="chartHistorical"></canvas>
+        <div class="filter-group">
+            <label>Estado</label>
+            <select id="filter-estado"><option value="All">Todos</option></select>
+        </div>
+        <div class="filter-group">
+            <label>Localidad</label>
+            <select id="filter-localidad"><option value="All">Todas</option></select>
+        </div>
+        <div class="filter-group">
+            <label>Área</label>
+            <select id="filter-area"><option value="All">Todas</option></select>
+        </div>
+        <div class="filter-group">
+            <label>Sexo</label>
+            <select id="filter-sexo"><option value="All">Todos</option></select>
+        </div>
+        
+    </aside>
+
+    <!-- Content -->
+    <main class="main-content">
+        <div class="header">
+            <h1>Dashboard Ejecutivo de Dotación</h1>
+            <div class="meta">
+                Última actualización<br>
+                <strong id="update-date" style="color:var(--text-primary)">--/--/----</strong>
             </div>
         </div>
 
-        <div class="card card-area-table">
-            <h2>Detalle de Dotación por Área</h2>
-            <table class="area-table" id="areaTable">
-                <thead>
-                    <tr><th>Área</th><th class="count">Salta</th></tr>
-                </thead>
-                <tbody id="areaTableBody">
-                    </tbody>
-                <tfoot>
-                    <tr class="area-table-total"><td>Total General</td><td class="total-number-cell" id="totalTableDotacion">0</td></tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <div class="card card-antiguedad">
-            <h2>Cantidad de Colaboradores por Antigüedad</h2>
-            <div class="chart-container">
-                <canvas id="chartAntiguedad"></canvas>
+        <div class="dashboard">
+            <!-- KPIs Row -->
+            <div class="card col-span-1">
+                <div class="kpi-title">Dotación Total</div>
+                <div class="kpi-value" id="kpi-dotacion">-</div>
             </div>
-        </div>
-
-        <div class="card card-category">
-            <h2>Distribución por Categoría</h2>
-            <div class="chart-container">
-                <canvas id="chartCategory"></canvas>
+            <div class="card col-span-1">
+                <div class="kpi-title">Edad Promedio</div>
+                <div class="kpi-value" id="kpi-edad">-</div>
             </div>
+            <div class="card col-span-1">
+                <div class="kpi-title">Antigüedad Promedio</div>
+                <div class="kpi-value" id="kpi-antiguedad">-</div>
+            </div>
+            <div class="card col-span-1">
+                <div class="kpi-title">% Mujeres</div>
+                <div class="kpi-value" id="kpi-mujeres">-</div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="card col-span-2 row-span-2">
+                <div class="chart-header">
+                    <div class="chart-title">Histórico de Ingresos Acumulados</div>
+                </div>
+                <div class="chart-container" id="chart-historico"></div>
+            </div>
+            <div class="card col-span-2 row-span-2">
+                <div class="chart-header">
+                    <div class="chart-title">Distribución por Rango Etario y Sexo</div>
+                </div>
+                <div class="chart-container" id="chart-demografia"></div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="card col-span-2 row-span-2">
+                <div class="chart-header">
+                    <div class="chart-title">Composición por Área (Sunburst)</div>
+                </div>
+                <div class="chart-container" id="chart-area"></div>
+            </div>
+            <div class="card col-span-1 row-span-2">
+                <div class="chart-header">
+                    <div class="chart-title">Geografía</div>
+                </div>
+                <div class="chart-container" id="chart-loc"></div>
+            </div>
+            <div class="card col-span-1 row-span-2">
+                <div class="chart-header">
+                    <div class="chart-title">Estado del Personal</div>
+                </div>
+                <div class="chart-container" id="chart-estado"></div>
+            </div>
+            
+            <!-- Table Row -->
+            <div class="card col-span-4 row-span-2">
+                <div class="chart-header">
+                    <div class="chart-title">Detalle Analítico</div>
+                </div>
+                <div class="data-table-container">
+                    <table id="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre y Apellido</th>
+                                <th>Área</th>
+                                <th>Puesto</th>
+                                <th>Localidad</th>
+                                <th>Sexo</th>
+                                <th>Estado</th>
+                                <th>Ingreso</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
-    </div>
+    </main>
 
     <script>
-        // *** IMPORTANTE: PEGA TU ENLACE CSV PUBLICADO AQUÍ ***
-        const urlDatosDotacion = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR7Ila8tzO3SEBZ5-faEFW-9VZY8eiPCUV3vPhryrlyqsmovw76hKqVRc-y18rTmz0NugYIUv6JTxRH/pub?output=csv';
-        // ******************************************************
+        // CONFIGURACIÓN DE DATOS
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR7Ila8tzO3SEBZ5-faEFW-9VZY8eiPCUV3vPhryrlyqsmovw76hKqVRc-y18rTmz0NugYIUv6JTxRH/pub?output=csv";
+        
+        // ESTADO GLOBAL
+        let globalData = [];
+        let filteredData = [];
+        
+        // ELEMENTOS DOM (Filtros)
+        const filters = {
+            estado: document.getElementById('filter-estado'),
+            localidad: document.getElementById('filter-localidad'),
+            area: document.getElementById('filter-area'),
+            sexo: document.getElementById('filter-sexo'),
+        };
 
-        // Configuración de Colores Corporativos Autosol
-        const primaryColor = '#0056b3';
-        const accentColors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6c757d', '#e83e8c'];
+        // PLOTLY DEFAULTS PARA TEMA OSCURO
+        const plotlyLayoutBase = {
+            plot_bgcolor: 'transparent',
+            paper_bgcolor: 'transparent',
+            font: { family: 'Inter, sans-serif', color: '#94a3b8' },
+            margin: { t: 10, l: 40, r: 20, b: 40 },
+            xaxis: { gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)' },
+            yaxis: { gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)' }
+        };
+        const colors = { primary: '#38bdf8', secondary: '#818cf8', female: '#f472b6', male: '#38bdf8', other: '#94a3b8' };
 
-        Papa.parse(urlDatosDotacion, {
+        // 1. INICIALIZACIÓN
+        Papa.parse(CSV_URL, {
             download: true,
             header: true,
+            skipEmptyLines: true,
             complete: function(results) {
-                const data = results.data;
-                // Filtrar filas vacías
-                const validData = data.filter(row => row['Nombre y Apellido'] && row['Área'] && row['Fecha de Ingreso']);
-
-                if (validData.length === 0) {
-                    alert("No se encontraron datos válidos. Verifica que las columnas 'Nombre y Apellido', 'Área' y 'Fecha de Ingreso' existan y tengan datos.");
-                    return;
-                }
-
-                document.getElementById('totalDotacion').innerText = validData.length;
-                document.getElementById('totalTableDotacion').innerText = validData.length;
-                
-                // Fecha de actualización (simulada como hoy, para el ejemplo)
-                const today = new Date();
-                document.getElementById('lastUpdatedDate').innerText = today.toLocaleDateString('es-AR');
-
-                processHistorical(validData);
-                processAreaTable(validData);
-                processAntiguedad(validData, today);
-                processCategory(validData);
+                processRawData(results.data);
+                document.getElementById('update-date').innerText = new Date().toLocaleDateString('es-AR');
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            },
+            error: function(err) {
+                alert("Error al cargar datos: " + err);
             }
         });
 
-        // KPI 1: Dotación Histórica (Gráfico de Línea)
-        function processHistorical(data) {
-            const dateCounts = {};
-            data.forEach(row => {
-                // Asumimos formato DD/MM/YYYY mostrado en el ejemplo
-                const parts = row['Fecha de Ingreso'].split('/');
-                if (parts.length === 3) {
-                    // Creamos clave YYYY-MM para agrupar por mes
-                    const monthKey = `${parts[2]}-${parts[1].padStart(2, '0')}`;
-                    dateCounts[monthKey] = (dateCounts[monthKey] || 0) + 1;
-                }
-            });
-
-            // Ordenar las fechas
-            const sortedMonths = Object.keys(dateCounts).sort();
+        // 2. PROCESAMIENTO INCIAL DE DATOS
+        function processRawData(data) {
+            const now = new Date();
             
-            // Calcular el acumulado
-            let cumulative = 0;
-            const historicalData = sortedMonths.map(month => {
-                cumulative += dateCounts[month];
-                return { x: month, y: cumulative };
+            globalData = data.filter(d => d['Nombre y Apellido'] && d['Área'] && d['Fecha de Ingreso']).map(d => {
+                // Parse Dates (Asumiendo formato DD/MM/YYYY)
+                const parseDateStr = (dateStr) => {
+                    if(!dateStr) return null;
+                    const parts = dateStr.split('/');
+                    if(parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]);
+                    return null;
+                };
+
+                const fIngreso = parseDateStr(d['Fecha de Ingreso']);
+                const fNacimiento = parseDateStr(d['Fecha de Nacimiento']);
+                
+                // Cálculos
+                const edad = fNacimiento ? (now - fNacimiento) / (1000*60*60*24*365.25) : null;
+                const antiguedad = fIngreso ? (now - fIngreso) / (1000*60*60*24*365.25) : null;
+
+                // Limpieza de Nulos Categóricos
+                const estado = d['Estado'] || 'Desconocido';
+                const localidad = d['Localidad'] || 'Sin especificar';
+                const area = d['Área'] || 'Sin especificar';
+                const sexo = d['Sexo'] || 'Sin Especificar';
+                const sector = d['Sector'] || 'Sin especificar';
+
+                return { ...d, fIngreso, edad, antiguedad, estado, localidad, area, sexo, sector };
             });
 
-            new Chart(document.getElementById('chartHistorical').getContext('2d'), {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'Dotación Total',
-                        data: historicalData,
-                        borderColor: primaryColor,
-                        backgroundColor: primaryColor + '10', // Azul translúcido
-                        fill: true,
-                        tension: 0.2, // Líneas curvas suavemente
-                        pointRadius: 5
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: false, grid: { color: '#f0f2f5' } }, x: { grid: { display: false } } }
-                }
-            });
+            populateFilters();
+            applyFilters(); // Renderiza todo
         }
 
-        // KPI 2: Tabla por Área (Imitando la estética del ejemplo)
-        function processAreaTable(data) {
-            const countArea = {};
-            data.forEach(row => {
-                const area = row['Área'].trim() || 'Sin área';
-                countArea[area] = (countArea[area] || 0) + 1;
+        // 3. LLENADO DE FILTROS AL ESTILO SLICERS
+        function populateFilters() {
+            const addOptions = (selectElem, param) => {
+                const uniqueValues = [...new Set(globalData.map(d => d[param]).filter(v => v))].sort();
+                uniqueValues.forEach(val => { selectElem.options.add(new Option(val, val)); });
+                selectElem.addEventListener('change', applyFilters);
+            };
+
+            addOptions(filters.estado, 'estado');
+            // Auto seleccionar "Activo" si existe
+            if([...filters.estado.options].some(o => o.value === 'Activo')) filters.estado.value = 'Activo';
+
+            addOptions(filters.localidad, 'localidad');
+            addOptions(filters.area, 'area');
+            addOptions(filters.sexo, 'sexo');
+        }
+
+        // 4. APLICACIÓN DE FILTROS Y ACTUALIZACIÓN (CROSS-FILTERING)
+        function applyFilters() {
+            const vEstado = filters.estado.value;
+            const vLoc = filters.localidad.value;
+            const vArea = filters.area.value;
+            const vSexo = filters.sexo.value;
+
+            filteredData = globalData.filter(d => {
+                return (vEstado === 'All' || d.estado === vEstado) &&
+                       (vLoc === 'All' || d.localidad === vLoc) &&
+                       (vArea === 'All' || d.area === vArea) &&
+                       (vSexo === 'All' || d.sexo === vSexo);
             });
 
-            const tbody = document.getElementById('areaTableBody');
-            tbody.innerHTML = ''; // Limpiar
+            updateKPIs();
+            renderCharts();
+            updateTable();
+        }
+
+        // 5. ACTUALIZAR KPIs
+        function updateKPIs() {
+            const total = filteredData.length;
+            document.getElementById('kpi-dotacion').innerText = total.toLocaleString();
+
+            const edades = filteredData.map(d => d.edad).filter(e => e !== null);
+            const edadProm = edades.length ? (edades.reduce((a,b)=>a+b,0)/edades.length) : 0;
+            document.getElementById('kpi-edad').innerText = edades.length ? edadProm.toFixed(1) + ' Años' : 'N/A';
+
+            const ants = filteredData.map(d => d.antiguedad).filter(a => a !== null);
+            const antProm = ants.length ? (ants.reduce((a,b)=>a+b,0)/ants.length) : 0;
+            document.getElementById('kpi-antiguedad').innerText = ants.length ? antProm.toFixed(1) + ' Años' : 'N/A';
+
+            const mujeres = filteredData.filter(d => d.sexo === 'Femenino').length;
+            const pctMujeres = total ? (mujeres/total)*100 : 0;
+            document.getElementById('kpi-mujeres').innerText = pctMujeres.toFixed(1) + ' %';
+        }
+
+        // 6. RENDERIZADO DE GRÁFICOS (PLOTLY JS)
+        function renderCharts() {
+            const emptyCheck = (dataArr, elemId, text="Sin datos") => {
+                if(dataArr.length === 0) {
+                    Plotly.purge(elemId);
+                    document.getElementById(elemId).innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary);opacity:0.5;">${text}</div>`;
+                    return true;
+                } return false;
+            };
+
+            // --- A. Histórico de Ingresos Acumulados ---
+            let ingresos = filteredData.filter(d => d.fIngreso).map(d => {
+                return { yrMonth: `${d.fIngreso.getFullYear()}-${String(d.fIngreso.getMonth()+1).padStart(2,'0')}` };
+            });
+            if(!emptyCheck(ingresos, 'chart-historico')) {
+                let groupedHist = {};
+                ingresos.forEach(d => groupedHist[d.yrMonth] = (groupedHist[d.yrMonth] || 0) + 1);
+                let sortedKeys = Object.keys(groupedHist).sort();
+                
+                let acum = 0, xVals = [], yVals = [];
+                sortedKeys.forEach(k => { acum += groupedHist[k]; xVals.push(k); yVals.push(acum); });
+
+                let trace1 = {
+                    x: xVals, y: yVals, type: 'scatter', mode: 'lines',
+                    fill: 'tozeroy',
+                    line: { color: colors.primary, width: 3 },
+                    fillcolor: 'rgba(56, 189, 248, 0.15)',
+                    hovertemplate: 'Fecha: %{x}<br>Dotación Acumulada: %{y}<extra></extra>'
+                };
+                Plotly.newPlot('chart-historico', [trace1], { ...plotlyLayoutBase, xaxis: { ...plotlyLayoutBase.xaxis, type: 'category' } }, {responsive: true, displayModeBar: false});
+            }
+
+            // --- B. Distribución por Edad y Sexo ---
+            let edadData = filteredData.filter(d => d.edad !== null);
+            if(!emptyCheck(edadData, 'chart-demografia')) {
+                const mapBins = (edad) => {
+                    if (edad < 25) return '< 25'; if (edad <= 35) return '26-35';
+                    if (edad <= 45) return '36-45'; if (edad <= 55) return '46-55'; return '> 55';
+                };
+                const binsObj = { '< 25':{}, '26-35':{}, '36-45':{}, '46-55':{}, '> 55':{} };
+                edadData.forEach(d => {
+                    let b = mapBins(d.edad), s = d.sexo;
+                    if(!binsObj[b][s]) binsObj[b][s]=0;
+                    binsObj[b][s]++;
+                });
+
+                let mData = [], fData = [];
+                let labels = Object.keys(binsObj);
+                labels.forEach(l => {
+                    fData.push(binsObj[l]['Femenino'] || 0);
+                    mData.push(binsObj[l]['Masculino'] || 0);
+                });
+
+                let traceF = { x: labels, y: fData, name: 'Femenino', type: 'bar', marker: { color: colors.female } };
+                let traceM = { x: labels, y: mData, name: 'Masculino', type: 'bar', marker: { color: colors.male } };
+                
+                Plotly.newPlot('chart-demografia', [traceF, traceM], {
+                    ...plotlyLayoutBase, barmode: 'group', legend: { orientation: "h", y: 1.1, x: 0.5, xanchor:"center" }
+                }, {responsive: true, displayModeBar: false});
+            }
+
+            // --- C. Sunburst (Área y Sector) ---
+            if(filteredData.length > 0) {
+                let sunData = {}, total = 0;
+                filteredData.forEach(d => {
+                    let a = d.area, s = d.sector;
+                    if(!sunData[a]) sunData[a] = { total: 0, sectors: {} };
+                    sunData[a].total++;
+                    sunData[a].sectors[s] = (sunData[a].sectors[s] || 0) + 1;
+                    total++;
+                });
+
+                let ids = ['Autosol'], labels = ['Autosol'], parents = [''], values = [total];
+                for (const [area, aData] of Object.entries(sunData)) {
+                    ids.push(area); labels.push(area); parents.push('Autosol'); values.push(aData.total);
+                    for (const [sec, sVal] of Object.entries(aData.sectors)) {
+                        let secId = area + " - " + sec;
+                        ids.push(secId); labels.push(sec); parents.push(area); values.push(sVal);
+                    }
+                }
+
+                let traceSun = {
+                    type: "sunburst", ids: ids, labels: labels, parents: parents, values: values,
+                    outsidetextfont: {size: 20, color: "#94a3b8"}, leaf: {opacity: 0.8},
+                    marker: { line: { width: 1, color: 'rgba(255,255,255,0.1)' } },
+                    branchvalues: 'total'
+                };
+                Plotly.newPlot('chart-area', [traceSun], { ...plotlyLayoutBase, margin: {t:0, l:0, r:0, b:0} }, {responsive: true, displayModeBar: false});
+            } else { Plotly.purge('chart-area'); }
+
+            // --- D. Geografía (Donut) ---
+            let locs = {};
+            filteredData.forEach(d => locs[d.localidad] = (locs[d.localidad] || 0) + 1);
+            if(!emptyCheck(Object.keys(locs), 'chart-loc')) {
+                let traceLoc = {
+                    labels: Object.keys(locs), values: Object.values(locs), type: 'pie', hole: .5,
+                    marker: { colors: [colors.primary, colors.secondary, colors.female, '#3b82f6', '#0ea5e9'] },
+                    textinfo: "label+percent", textposition: "inside", hoverinfo: 'label+value'
+                };
+                Plotly.newPlot('chart-loc', [traceLoc], { ...plotlyLayoutBase, margin: {t:0,l:0,r:0,b:0}, showlegend: false }, {responsive: true, displayModeBar: false});
+            }
+
+            // --- E. Estado (Donut) ---
+            let estados = {};
+            filteredData.forEach(d => estados[d.estado] = (estados[d.estado] || 0) + 1);
+            if(!emptyCheck(Object.keys(estados), 'chart-estado')) {
+                let traceEst = {
+                    labels: Object.keys(estados), values: Object.values(estados), type: 'pie', hole: .5,
+                    marker: { colors: ['#10b981', '#f43f5e', '#f59e0b', '#64748b'] },
+                    textinfo: "label+percent", textposition: "inside", hoverinfo: 'label+value'
+                };
+                Plotly.newPlot('chart-estado', [traceEst], { ...plotlyLayoutBase, margin: {t:0,l:0,r:0,b:0}, showlegend: false }, {responsive: true, displayModeBar: false});
+            }
+        }
+
+        // 7. ACTUALIZAR TABLA DE DATOS
+        function updateTable() {
+            const tbody = document.querySelector('#data-table tbody');
+            tbody.innerHTML = '';
             
-            // Ordenar áreas alfabéticamente
-            const sortedAreas = Object.keys(countArea).sort();
-            
-            sortedAreas.forEach(area => {
+            // Limitamos a primeros 100 para rendimiento
+            const toShow = filteredData.slice(0, 100);
+            toShow.forEach(d => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${area}</td><td class="count">${countArea[area]}</td>`;
+                tr.innerHTML = `
+                    <td><strong>${d['Nombre y Apellido']}</strong></td>
+                    <td>${d.area}</td>
+                    <td>${d['Puesto'] || '-'}</td>
+                    <td>${d.localidad}</td>
+                    <td>${d.sexo}</td>
+                    <td>
+                        <span style="background: ${d.estado === 'Activo'?'rgba(16,185,129,0.2)':'rgba(244,63,94,0.2)'}; color:${d.estado === 'Activo'?'#10b981':'#f43f5e'}; padding: 4px 8px; border-radius: 4px; font-size:11px; font-weight: bold;">
+                            ${d.estado}
+                        </span>
+                    </td>
+                    <td>${d['Fecha de Ingreso'] || '-'}</td>
+                `;
                 tbody.appendChild(tr);
             });
-        }
-
-        // KPI 3: Cantidad por Antigüedad (Gráfico de Barras Horizontales - Imita el ejemplo)
-        function processAntiguedad(data, refDate) {
-            const tenureBuckets = { "< 1 año": 0, "De 1 a 3 años": 0, "De 3 a 5 años": 0, "De 5 a 10 años": 0, "10 años o más": 0 };
-
-            data.forEach(row => {
-                const parts = row['Fecha de Ingreso'].split('/');
-                if (parts.length === 3) {
-                    const ingreso = new Date(parts[2], parts[1] - 1, parts[0]);
-                    const diffYears = (refDate - ingreso) / (1000 * 60 * 60 * 24 * 365.25);
-                    
-                    if (diffYears < 1) tenureBuckets["< 1 año"]++;
-                    else if (diffYears < 3) tenureBuckets["De 1 a 3 años"]++;
-                    else if (diffYears < 5) tenureBuckets["De 3 a 5 años"]++;
-                    else if (diffYears < 10) tenureBuckets["De 5 a 10 años"]++;
-                    else tenureBuckets["10 años o más"]++;
-                }
-            });
-
-            new Chart(document.getElementById('chartAntiguedad').getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(tenureBuckets),
-                    datasets: [{
-                        label: 'Colaboradores',
-                        data: Object.values(tenureBuckets),
-                        backgroundColor: primaryColor,
-                        borderRadius: 5
-                    }]
-                },
-                options: { 
-                    indexAxis: 'y', // Hace las barras horizontales
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    scales: { x: { beginAtZero: true, grid: { color: '#f0f2f5' } }, y: { grid: { display: false } } },
-                    plugins: { legend: { display: false } } // Ocultar leyenda
-                }
-            });
-        }
-
-        // KPI 4: Distribución por Categoría (Gráfico de Tarta)
-        function processCategory(data) {
-            const countCategory = {};
-            data.forEach(row => {
-                const category = row['Categoría'] ? row['Categoría'].trim() : 'Sin definir';
-                countCategory[category] = (countCategory[category] || 0) + 1;
-            });
-
-            new Chart(document.getElementById('chartCategory').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(countCategory),
-                    datasets: [{
-                        data: Object.values(countCategory),
-                        backgroundColor: accentColors // Usar paleta de colores Autosol
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+            if(filteredData.length > 100) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="7" style="text-align:center; color: var(--text-secondary);">&bull; &bull; &bull; Mostrando 100 de ${filteredData.length} registros &bull; &bull; &bull;</td>`;
+                tbody.appendChild(tr);
+            }
         }
     </script>
 </body>
